@@ -3,8 +3,17 @@ kind: AutoHealPolicy
 metadata:
   name: example-autoheal-policy
 spec:
+  # Label selector to identify target pods
   selector:
     app: my-spring-app
+  
+  # Optional: Port on which the Actuator endpoints are exposed (default is 8080)
+  port: 8080
+  
+  # Optional: Authentication secret containing 'username' and 'password'
+  # auth:
+  #   secretName: actuator-auth-secret
+
   rules:
     - type: UnresponsiveActuator
       action: Restart

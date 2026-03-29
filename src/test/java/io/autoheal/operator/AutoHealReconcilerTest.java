@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -48,7 +48,7 @@ class AutoHealReconcilerTest {
         AutoHealPolicy policy = createPolicy("test-policy", "app", "my-app");
         createPod("my-pod", "app", "my-app", podIp, "Running");
         
-        when(analyzer.analyze(eq(podIp), anyString(), anyString()))
+        when(analyzer.analyze(eq(podIp), anyInt(), any(), anyString(), anyString()))
                 .thenReturn(new HealthAnalyzer.AnalysisResult(false, "OK"));
 
         // When
@@ -69,7 +69,7 @@ class AutoHealReconcilerTest {
         AutoHealPolicy policy = createPolicy("restart-policy", "app", "bad-app");
         createPod("bad-pod", "app", "bad-app", podIp, "Running");
         
-        when(analyzer.analyze(eq(podIp), anyString(), anyString()))
+        when(analyzer.analyze(eq(podIp), anyInt(), any(), anyString(), anyString()))
                 .thenReturn(new HealthAnalyzer.AnalysisResult(true, "Memory Leak Detected"));
 
         // When

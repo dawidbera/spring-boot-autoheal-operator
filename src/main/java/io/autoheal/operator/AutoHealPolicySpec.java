@@ -12,12 +12,27 @@ import java.util.Map;
 public class AutoHealPolicySpec {
     /** Label selector to identify target pods managed by this policy. */
     private Map<String, String> selector;
+
+    /** The port on which the Actuator endpoints are exposed. Defaults to 8080. */
+    private int port = 8080;
+
+    /** Authentication configuration for the Actuator endpoints. */
+    private AuthSpec auth;
     
     /** List of rules to be evaluated for each pod. */
     private List<Rule> rules;
     
     /** Minimum time in seconds between remediation actions for a single pod. */
     private int coolDownSeconds = 300; // Default: 5 minutes
+
+    /**
+     * Defines authentication settings.
+     */
+    @Data
+    public static class AuthSpec {
+        /** Name of the Kubernetes Secret containing 'username' and 'password' keys. */
+        private String secretName;
+    }
 
     /**
      * Defines a single monitoring rule and its corresponding remediation action.

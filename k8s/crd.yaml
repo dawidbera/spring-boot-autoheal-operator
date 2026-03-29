@@ -35,6 +35,16 @@ spec:
                   type: object
                   additionalProperties:
                     type: string
+                # Port for actuator endpoints (default 8080)
+                port:
+                  type: integer
+                  default: 8080
+                # Authentication settings
+                auth:
+                  type: object
+                  properties:
+                    secretName:
+                      type: string
                 # List of health rules and actions
                 rules:
                   type: array

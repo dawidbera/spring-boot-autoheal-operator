@@ -1,14 +1,19 @@
 package io.autoheal.operator;
 
 import io.autoheal.operator.analyzer.HealthAnalyzer;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -53,11 +58,43 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
                 .list()
                 .getItems();
 
+        HttpHeaders headers = prepareHeaders(resource);
+
         for (Pod pod : pods) {
-            processPod(pod, resource);
+            processPod(pod, resource, headers);
         }
 
         return UpdateControl.noUpdate();
+    }
+
+    /**
+     * Prepares HTTP headers for Actuator requests, including Basic Auth if configured.
+     *
+     * @param policy the AutoHealPolicy resource.
+     * @return HttpHeaders with auth if applicable.
+     */
+    private HttpHeaders prepareHeaders(AutoHealPolicy policy) {
+        HttpHeaders headers = new HttpHeaders();
+        if (policy.getSpec().getAuth() != null && policy.getSpec().getAuth().getSecretName() != null) {
+            String secretName = policy.getSpec().getAuth().getSecretName();
+            String namespace = policy.getMetadata().getNamespace();
+            Secret secret = client.secrets().inNamespace(namespace).withName(secretName).get();
+            
+            if (secret != null && secret.getData() != null) {
+                String username = decode(secret.getData().get("username"));
+                String password = decode(secret.getData().get("password"));
+                if (username != null && password != null) {
+                    headers.setBasicAuth(username, password);
+                }
+            } else {
+                log.warn("Secret {} not found in namespace {} or missing data.", secretName, namespace);
+            }
+        }
+        return headers;
+    }
+
+    private String decode(String base64) {
+        return base64 != null ? new String(Base64.getDecoder().decode(base64)) : null;
     }
 
     /**
@@ -66,10 +103,12 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
      *
      * @param pod the pod to process.
      * @param policy the policy determining the health rules.
+     * @param headers HTTP headers for the analysis.
      */
-    private void processPod(Pod pod, AutoHealPolicy policy) {
+    private void processPod(Pod pod, AutoHealPolicy policy, HttpHeaders headers) {
         String podName = pod.getMetadata().getName();
         String podIp = pod.getStatus().getPodIP();
+        int port = policy.getSpec().getPort();
 
         if (podIp == null || !"Running".equals(pod.getStatus().getPhase())) return;
 
@@ -80,12 +119,12 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
         }
 
         for (AutoHealPolicySpec.Rule rule : policy.getSpec().getRules()) {
-            HealthAnalyzer.AnalysisResult result = analyzer.analyze(podIp, rule.getType(), rule.getThreshold());
+            HealthAnalyzer.AnalysisResult result = analyzer.analyze(podIp, port, headers, rule.getType(), rule.getThreshold());
             if (result.unhealthy()) {
                 log.error("Rule {} triggered for pod {}: {}", rule.getType(), podName, result.reason());
                 emitEvent(policy, pod, "AutoHealTriggered", 
                     String.format("Rule %s triggered: %s. Action: %s", rule.getType(), result.reason(), rule.getAction()));
-                executeAction(pod, rule.getAction());
+                executeAction(pod, rule.getAction(), port, headers);
                 lastActionCache.put(podName, System.currentTimeMillis());
                 break;
             }
@@ -146,14 +185,16 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
      *
      * @param pod the target pod for the action.
      * @param action the type of action to perform.
+     * @param port the actuator port.
+     * @param headers HTTP headers for potential dump capture.
      */
-    private void executeAction(Pod pod, String action) {
+    private void executeAction(Pod pod, String action, int port, HttpHeaders headers) {
         String podName = pod.getMetadata().getName();
         String namespace = pod.getMetadata().getNamespace();
 
         switch (action) {
             case "RestartWithDump" -> {
-                captureDump(pod);
+                captureDump(pod, port, headers);
                 restartPod(pod);
             }
             case "Restart", "RecreatePod" -> restartPod(pod);
@@ -192,12 +233,14 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
      * Captures a thread dump from the pod's actuator endpoint for diagnostic purposes.
      *
      * @param pod the pod from which to capture the dump.
+     * @param port the actuator port.
+     * @param headers HTTP headers for auth.
      */
-    private void captureDump(Pod pod) {
+    private void captureDump(Pod pod, int port, HttpHeaders headers) {
         String podIp = pod.getStatus().getPodIP();
         try {
-            String url = "http://" + podIp + ":8080/actuator/threaddump";
-            String dump = restTemplate.getForObject(url, String.class);
+            String url = String.format("http://%s:%d/actuator/threaddump", podIp, port);
+            String dump = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class).getBody();
             log.info("DIAGNOSTIC DUMP for {}:\n{}", pod.getMetadata().getName(), dump);
             // In production, save this to a PersistentVolume or external storage
         } catch (Exception e) {

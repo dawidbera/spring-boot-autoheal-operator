@@ -1,0 +1,10 @@
+apiVersion: autoheal.io/v1
+kind: AutoHealPolicy
+metadata:
+  name: example-autoheal-policy
+spec:
+  selector:
+    app: my-spring-app
+  rules:
+    - type: UnresponsiveActuator
+      action: Restart

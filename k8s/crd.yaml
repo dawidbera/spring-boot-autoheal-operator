@@ -1,0 +1,65 @@
+# Custom Resource Definition for AutoHealPolicy
+# This file defines the schema for the AutoHealPolicy resource, which allows users 
+# to specify health monitoring rules and remediation actions for Spring Boot applications.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # The name of the CRD must match the spec: <plural>.<group>
+  name: autohealpolicies.autoheal.io
+spec:
+  # The group name used in the API: autoheal.io/v1
+  group: autoheal.io
+  names:
+    kind: AutoHealPolicy
+    listKind: AutoHealPolicyList
+    plural: autohealpolicies
+    singular: autohealpolicy
+    shortNames:
+      - ahp
+  # Indicates this resource is namespaced (not cluster-wide)
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            # The desired state of the AutoHealPolicy
+            spec:
+              type: object
+              properties:
+                # Selector to identify target pods (matchLabels)
+                selector:
+                  type: object
+                  additionalProperties:
+                    type: string
+                # List of health rules and actions
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      # Rule type: MemoryLeak, ThreadDeadlock, GCOverhead
+                      type:
+                        type: string
+                      # Threshold for triggering the rule (e.g., "90%", "100")
+                      threshold:
+                        type: string
+                      # Action to perform: Restart, RestartWithDump, ScaleUp
+                      action:
+                        type: string
+            # The observed state of the AutoHealPolicy
+            status:
+              type: object
+              properties:
+                # Last time the health check was performed
+                lastCheck:
+                  type: string
+                # Overall health status
+                status:
+                  type: string
+                # Cumulative number of restarts triggered
+                restartCount:
+                  type: integer

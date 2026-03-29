@@ -1,0 +1,23 @@
+# Advanced AutoHealPolicy demonstrating new features:
+# 1. UnresponsiveActuator: Restarts the pod if /actuator/health is unreachable (e.g., JVM hang)
+# 2. ScaleUp action: Increases deployment replicas if GC overhead is too high
+# 3. Events: All actions will now be visible via 'kubectl get events'
+
+apiVersion: autoheal.io/v1
+kind: AutoHealPolicy
+metadata:
+  name: advanced-spring-policy
+spec:
+  selector:
+    matchLabels:
+      app: my-spring-app
+  coolDownSeconds: 600 # Wait 10 minutes between actions for the same pod
+  rules:
+    - type: UnresponsiveActuator
+      action: Restart
+    - type: GCOverhead
+      threshold: "500" # Simple threshold for jvm.gc.pause (ms)
+      action: ScaleUp
+    - type: MemoryLeak
+      threshold: "90%"
+      action: RestartWithDump

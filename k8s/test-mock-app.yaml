@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-boot-mock
+  labels:
+    app: my-spring-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-spring-app
+  template:
+    metadata:
+      labels:
+        app: my-spring-app
+    spec:
+      containers:
+      - name: mock-app
+        image: python:3.9-slim
+        command: ["python3", "-c"]
+        args:
+          - |
+            from http.server import BaseHTTPRequestHandler, HTTPServer
+            import json
+
+            status = "UP"
+            memory_usage = 500000000 # 500MB
+
+            class MockActuator(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    global status, memory_usage
+                    if self.path == '/actuator/health':
+                        self.send_response(200 if status == "UP" else 503)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"status": status}).encode())
+                    
+                    elif self.path == '/actuator/metrics/jvm.memory.used':
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"measurements": [{"value": memory_usage}]}).encode())
+
+                    elif self.path == '/actuator/metrics/jvm.memory.max':
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"measurements": [{"value": 1000000000}]}).encode()) # 1GB Max
+
+                    elif self.path == '/fail':
+                        status = "DOWN"
+                        self.send_response(200)
+                        self.end_headers()
+                        self.wfile.write(b"Status changed to DOWN")
+
+                    elif self.path == '/leak':
+                        memory_usage = 950000000 # 950MB (95%)
+                        self.send_response(200)
+                        self.end_headers()
+                        self.wfile.write(b"Memory leak simulated")
+
+            HTTPServer(('0.0.0.0', 8080), MockActuator).serve_forever()
+        ports:
+        - containerPort: 8080

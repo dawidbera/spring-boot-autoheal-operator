@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auto-heal-operator-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: auto-heal-operator-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/status", "events", "secrets"]
+    verbs: ["get", "list", "watch", "delete", "create", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["autoheal.io"]
+    resources: ["autohealpolicies", "autohealpolicies/status"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: auto-heal-operator-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: auto-heal-operator-sa
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: auto-heal-operator-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auto-heal-operator
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auto-heal-operator
+  template:
+    metadata:
+      labels:
+        app: auto-heal-operator
+    spec:
+      serviceAccountName: auto-heal-operator-sa
+      containers:
+        - name: operator
+          image: spring-boot-autoheal-operator:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace

@@ -156,7 +156,7 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
                         .withUid(pod.getMetadata().getUid())
                     .endRegarding()
                     .withEventTime(new io.fabric8.kubernetes.api.model.MicroTime(java.time.Instant.now().toString()))
-                    .withNewAction("AutoHeal")
+                    .withAction("AutoHeal")
                     .build()
             ).create();
         } catch (Exception e) {

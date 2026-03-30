@@ -22,6 +22,7 @@ import java.util.Map;
  * Continuously monitors pods and applies remediation actions defined in the policy.
  */
 @Slf4j
+@io.javaoperatorsdk.operator.api.reconciler.Reconciler(name = "autohealreconciler")
 public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
 
     private final KubernetesClient client;

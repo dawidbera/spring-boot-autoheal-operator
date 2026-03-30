@@ -3,6 +3,7 @@ package io.autoheal.operator;
 import io.autoheal.operator.analyzer.HealthAnalyzer;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
+import io.javaoperatorsdk.operator.api.reconciler.ControllerConfiguration;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -22,7 +23,7 @@ import java.util.Map;
  * Continuously monitors pods and applies remediation actions defined in the policy.
  */
 @Slf4j
-@io.javaoperatorsdk.operator.api.reconciler.Reconciler(name = "autohealreconciler")
+@ControllerConfiguration(name = "autohealreconciler")
 public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
 
     private final KubernetesClient client;

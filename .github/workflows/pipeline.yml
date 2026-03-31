@@ -9,6 +9,7 @@ on:
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: {} # Manual trigger allowed
 
 # Grant permissions to write to the GitHub Container Registry (GHCR)
 permissions:

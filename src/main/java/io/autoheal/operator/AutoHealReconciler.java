@@ -244,11 +244,18 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
         String podIp = pod.getStatus().getPodIP();
         try {
             String url = String.format("http://%s:%d/actuator/threaddump", podIp, port);
-            String dump = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class).getBody();
-            log.info("DIAGNOSTIC DUMP for {}:\n{}", pod.getMetadata().getName(), dump);
-            // In production, save this to a PersistentVolume or external storage
+            log.info("Attempting to capture diagnostic dump from {}/{}", pod.getMetadata().getNamespace(), pod.getMetadata().getName());
+            
+            // Use a request factory with a timeout for the diagnostic dump
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(5000);
+            factory.setReadTimeout(10000);
+            RestTemplate timeoutRestTemplate = new RestTemplate(factory);
+
+            String dump = timeoutRestTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class).getBody();
+            log.info("DIAGNOSTIC DUMP captured successfully for {}:\n{}", pod.getMetadata().getName(), dump);
         } catch (Exception e) {
-            log.error("Failed to capture dump for {}: {}", pod.getMetadata().getName(), e.getMessage());
+            log.error("CRITICAL: Failed to capture diagnostic dump for {}. Reason: {}", pod.getMetadata().getName(), e.getMessage());
         }
     }
 

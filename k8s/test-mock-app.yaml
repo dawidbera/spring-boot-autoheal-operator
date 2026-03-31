@@ -47,6 +47,12 @@ spec:
                         self.end_headers()
                         self.wfile.write(json.dumps({"measurements": [{"value": 1000000000}]}).encode()) # 1GB Max
 
+                    elif self.path == '/actuator/threaddump':
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"threads": [{"threadName": "main", "threadState": "RUNNABLE"}]}).encode())
+
                     elif self.path == '/fail':
                         status = "DOWN"
                         self.send_response(200)

@@ -39,6 +39,10 @@ spec:
                 port:
                   type: integer
                   default: 8080
+                # Minimum time in seconds between remediation actions
+                coolDownSeconds:
+                  type: integer
+                  default: 300
                 # Authentication settings
                 auth:
                   type: object

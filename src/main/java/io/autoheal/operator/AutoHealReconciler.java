@@ -157,7 +157,9 @@ public class AutoHealReconciler implements Reconciler<AutoHealPolicy> {
                         .withNamespace(pod.getMetadata().getNamespace())
                         .withUid(pod.getMetadata().getUid())
                     .endRegarding()
-                    .withEventTime(new io.fabric8.kubernetes.api.model.MicroTime(java.time.Instant.now().toString()))
+                    .withEventTime(new io.fabric8.kubernetes.api.model.MicroTime(
+                        java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
+                            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))))
                     .withAction("AutoHeal")
                     .build()
             ).create();

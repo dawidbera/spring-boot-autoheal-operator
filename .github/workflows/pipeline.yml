@@ -82,6 +82,6 @@ jobs:
         run: |
           for file in k8s/*.yaml; do
             echo "Validating $file"
-            # Simple syntax check using python or similar if specialized tools aren't present
-            python3 -c 'import yaml, sys; yaml.safe_load(open(sys.argv[1]))' "$file"
+            # Use safe_load_all to handle files with multiple YAML documents (separated by ---)
+            python3 -c 'import yaml, sys; list(yaml.safe_load_all(open(sys.argv[1])))' "$file"
           done
